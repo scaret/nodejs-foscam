@@ -178,27 +178,33 @@ app.control = {
 
     if( typeof cmd == 'string' && !cmd.match( /^[0-9]+$/ ) ) {
       switch( cmd ) {
-        case 'up': cmd = 0; break
-        case 'stop up': cmd = 1; break
-        case 'down': cmd = 2; break
-        case 'stop down': cmd = 3; break
-        case 'left': cmd = 4; break
-        case 'stop left': cmd = 5; break
-        case 'right': cmd = 6; break
-        case 'stop right': cmd = 7; break
-        case 'center': cmd = 25; break
-        case 'vertical patrol': cmd = 26; break
-        case 'stop vertical patrol': cmd = 27; break
-        case 'horizontal patrol': cmd = 28; break
+        case 'stop'                    : cmd = "ptzStopRun"         ; break
+        case 'up'                      : cmd = "ptzMoveUp"          ; break
+        case 'down'                    : cmd = "ptzMoveDown"        ; break
+        case 'left'                    : cmd = "ptzMoveLeft"        ; break
+        case 'right'                   : cmd = "ptzMoveRight"       ; break
+        case 'center'                  : cmd = "ptzReset"           ; break
+        case 'top left'                : cmd = "ptzMoveTopLeft"     ; break
+        case 'top right'               : cmd = "ptzMoveTopRight"    ; break
+        case 'bottom left'             : cmd = "ptzMoveBottomLeft"  ; break
+        case 'bottom right'            : cmd = "ptzMoveBottomRight" ; break
+        case 'open infra led'          : cmd = "openInfraLed"       ; break
+        case 'close infra led'         : cmd = "closeInfraLed"      ; break
+
+        // not supported
+        case 'vertical patrol'       : cmd = 26; break
+        case 'stop vertical patrol'  : cmd = 27; break
+        case 'horizontal patrol'     : cmd = 28; break
         case 'stop horizontal patrol': cmd = 29; break
-        case 'io output high': cmd = 94; break
-        case 'io output low': cmd = 95; break
+        case 'io output high'        : cmd = 94; break
+        case 'io output low'         : cmd = 95; break
       }
     }
 
     app.talk({
-      path: 'decoder_control.cgi',
-      fields: { command: cmd },
+      path: 'cgi-bin/CGIProxy.fcgi',
+      fields: { 
+        cmd: cmd },
       callback: cb
     })
   },
@@ -360,21 +366,43 @@ app.snapshot = function( filepath, cb ) {
   }
 
   app.talk({
-    path: 'snapshot.cgi',
-    encoding: 'binary',
-    callback: function( bin ) {
-      if( filepath ) {
-        fs.writeFile( filepath, bin, 'binary', function( err ) {
-          if( err ) {
-            throw err
-            cb( false )
-          } else {
-            cb( filepath )
-          }
-        })
-      } else {
-        cb( bin )
+    path  : 'cgi-bin/CGIProxy.fcgi',
+    fields: {
+      cmd: 'snapPicture'
+    },
+    callback: function( err, html ) {
+      if (err)
+      {
+        return cb(err);
       }
+      var resText = JSON.stringify(html);
+      if (!resText)
+      {
+        return cb(html); 
+      }
+      var match = resText.match(/\.\.\/([^\"]*)/);
+      if (!match)
+      {
+        return cb(html);
+      }
+      var remotePath = match[1];
+      app.talk({
+        path: remotePath,
+        encoding: 'binary',
+        callback: function (err, bin){
+          if( filepath ) {
+          fs.writeFile( filepath, bin, 'binary', function( err ) {
+            if( err ) {
+              cb( err )
+            } else {
+              cb(null, filepath )
+            }
+          })
+          } else {
+            cb(null, bin )
+          }
+        }
+      })
     }
   })
 }
