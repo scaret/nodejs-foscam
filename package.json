@@ -15,8 +15,10 @@
     "url":                "https://github.com/fvdm/nodejs-foscam/issues"
   },
   "main":                 "foscam.js",
-  "dependencies":         {},
   "devDependencies":      {},
+  "dependencies": {
+    "xml2js": "^0.4.6"
+  },
   "optionalDependencies": {},
   "engines": {
     "node":               "*"

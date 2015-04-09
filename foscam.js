@@ -33,6 +33,7 @@ var http = require('http')
 var querystring = require('querystring')
 var fs = require('fs')
 var EventEmitter = require('events').EventEmitter
+var parseString = require('xml2js').parseString;
 
 var app = new EventEmitter
 
@@ -59,63 +60,72 @@ app.setup = function( props, cb ) {
 // status
 app.status = function( cb ) {
   app.talk({
-    path: 'get_status.cgi',
-    callback: function( data ) {
-      var result = {}
-
-      data = data.split('\n')
-      for( var d in data ) {
-        if( data[d] != '' ) {
-          var line = data[d].split('var ')
-          line = String(line[1]).split('=')
-          line[1] = String(line[1]).replace( /;$/, '' )
-          result[ line[0] ] = line[1].substr(0,1) == '\'' ? line[1].substr(1, line[1].length -2) : line[1]
+    path: 'cgi-bin/CGIProxy.fcgi',
+    fields: {
+      cmd : 'getDevState',
+    },
+    callback: function( err, data ) {
+      if (err)
+      {
+        console.log(err);
+        return cb(err);
+      }
+      var result = {};
+      for (var key in data.CGI_Result)
+      {
+        if (data.CGI_Result[key] instanceof Array && data.CGI_Result[key].length == 1)
+        {
+           result[key] = data.CGI_Result[key][0];
+        }
+        else
+        {
+          result[key] = data.CGI_Result[key]
         }
       }
 
       if( result.alarm_status ) {
-        switch( result.alarm_status ) {
-          case '0': result.alarm_status_str = 'no alarm'; break
-          case '1': result.alarm_status_str = 'motion alarm'; break
-          case '2': result.alarm_status_str = 'input alarm'; break
+        switch( result.IOAlarm ) {
+          case '0': result.IOAlarm_str = 'no alarm'; break
+          case '1': result.IOAlarm_str = 'motion alarm'; break
+          case '2': result.IOAlarm_str = 'input alarm'; break
         }
       }
 
-      if( result.ddns_status ) {
-        switch( result.ddns_status ) {
-          case '0': result.ddns_status_str = 'No Action'; break
-          case '1': result.ddns_status_str = 'It\'s connecting...'; break
-          case '2': result.ddns_status_str = 'Can\'t connect to the Server'; break
-          case '3': result.ddns_status_str = 'Dyndns Succeed'; break
-          case '4': result.ddns_status_str = 'DynDns Failed: Dyndns.org Server Error'; break
-          case '5': result.ddns_status_str = 'DynDns Failed: Incorrect User or Password'; break
-          case '6': result.ddns_status_str = 'DynDns Failed: Need Credited User'; break
-          case '7': result.ddns_status_str = 'DynDns Failed: Illegal Host Format'; break
-          case '8': result.ddns_status_str = 'DynDns Failed: The Host Does not Exist'; break
-          case '9': result.ddns_status_str = 'DynDns Failed: The Host Does not Belong to You'; break
-          case '10': result.ddns_status_str = 'DynDns Failed: Too Many or Too Few Hosts'; break
-          case '11': result.ddns_status_str = 'DynDns Failed: The Host is Blocked for Abusing'; break
-          case '12': result.ddns_status_str = 'DynDns Failed: Bad Reply from Server'; break
-          case '13': result.ddns_status_str = 'DynDns Failed: Bad Reply from Server'; break
-          case '14': result.ddns_status_str = 'Oray Failed: Bad Reply from Server'; break
-          case '15': result.ddns_status_str = 'Oray Failed: Incorrect User or Password'; break
-          case '16': result.ddns_status_str = 'Oray Failed: Incorrect Hostname'; break
-          case '17': result.ddns_status_str = 'Oray Succeed'; break
-          case '18': result.ddns_status_str = 'Reserved'; break
-          case '19': result.ddns_status_str = 'Reserved'; break
-          case '20': result.ddns_status_str = 'Reserved'; break
-          case '21': result.ddns_status_str = 'Reserved'; break
+      if( result.ddnsState ) {
+        switch( result.ddnsState ) {
+          case '0': result.ddnsState_str = 'No Action'; break
+          case '1': result.ddnsState_str = 'It\'s connecting...'; break
+          case '2': result.ddnsState_str = 'Can\'t connect to the Server'; break
+          case '3': result.ddnsState_str = 'Dyndns Succeed'; break
+          case '4': result.ddnsState_str = 'DynDns Failed: Dyndns.org Server Error'; break
+          case '5': result.ddnsState_str = 'DynDns Failed: Incorrect User or Password'; break
+          case '6': result.ddnsState_str = 'DynDns Failed: Need Credited User'; break
+          case '7': result.ddnsState_str = 'DynDns Failed: Illegal Host Format'; break
+          case '8': result.ddnsState_str = 'DynDns Failed: The Host Does not Exist'; break
+          case '9': result.ddnsState_str = 'DynDns Failed: The Host Does not Belong to You'; break
+          case '10': result.ddnsState_str = 'DynDns Failed: Too Many or Too Few Hosts'; break
+          case '11': result.ddnsState_str = 'DynDns Failed: The Host is Blocked for Abusing'; break
+          case '12': result.ddnsState_str = 'DynDns Failed: Bad Reply from Server'; break
+          case '13': result.ddnsState_str = 'DynDns Failed: Bad Reply from Server'; break
+          case '14': result.ddnsState_str = 'Oray Failed: Bad Reply from Server'; break
+          case '15': result.ddnsState_str = 'Oray Failed: Incorrect User or Password'; break
+          case '16': result.ddnsState_str = 'Oray Failed: Incorrect Hostname'; break
+          case '17': result.ddnsState_str = 'Oray Succeed'; break
+          case '18': result.ddnsState_str = 'Reserved'; break
+          case '19': result.ddnsState_str = 'Reserved'; break
+          case '20': result.ddnsState_str = 'Reserved'; break
+          case '21': result.ddnsState_str = 'Reserved'; break
         }
       }
 
-      if( result.upnp_status ) {
-        switch( result.upnp_status ) {
-          case '0': result.upnp_status_str = 'No Action'; break
-          case '1': result.upnp_status_str = 'Succeed'; break
-          case '2': result.upnp_status_str = 'Device System Error'; break
-          case '3': result.upnp_status_str = 'Errors in Network Communication'; break
-          case '4': result.upnp_status_str = 'Errors in Chat with UPnP Device'; break
-          case '5': result.upnp_status_str = 'Rejected by UPnP Device, Maybe Port Conflict'; break
+      if( result.upnpState ) {
+        switch( result.upnpState ) {
+          case '0': result.upnpState_str = 'No Action'; break
+          case '1': result.upnpState_str = 'Succeed'; break
+          case '2': result.upnpState_str = 'Device System Error'; break
+          case '3': result.upnpState_str = 'Errors in Network Communication'; break
+          case '4': result.upnpState_str = 'Errors in Chat with UPnP Device'; break
+          case '5': result.upnpState_str = 'Rejected by UPnP Device, Maybe Port Conflict'; break
         }
       }
 
@@ -377,7 +387,7 @@ app.talk = function( props ) {
     props.fields = {}
   }
 
-  props.fields.user = app.settings.user
+  props.fields.usr = app.settings.user
   props.fields.pwd = app.settings.pass
   path = '/'+ props.path +'?'+ querystring.stringify( props.fields )
 
@@ -398,7 +408,23 @@ app.talk = function( props ) {
 
       if( typeof props.callback == 'function' ) {
         data = data.trim()
-        props.callback( data )
+        if (data[0] == "<")
+        {
+          parseString(data, function (err, data){
+            if (err)
+            {
+              callback(err);
+            }
+            else
+            {
+              props.callback(null, data);;
+            }
+          })
+        }
+        else
+        {
+          props.callback(null, data);
+        }
       }
     })
   })
