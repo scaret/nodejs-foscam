@@ -129,7 +129,7 @@ app.status = function( cb ) {
         }
       }
 
-      cb( result )
+      cb( null, result )
     }
   })
 }
